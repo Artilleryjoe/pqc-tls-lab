@@ -49,8 +49,8 @@ X25519 material and ML-KEM-768 material.
 
 Further testing needed:
 
-\- repeated trials
-\- packet segmentation
-\- latency
-\- CPU cost
-\- behavior under realistic network conditions
+- repeated trials
+- packet segmentation
+- latency
+- CPU cost
+- behavior under realistic network conditions
