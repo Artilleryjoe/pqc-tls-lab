@@ -18,3 +18,5 @@ results/*-server.txt
 results/*-server-error.txt
 results/server-*.txt
 results/request.txt
+
+scripts/tls_handshake_bench
