@@ -1,0 +1,12 @@
+# Private key material
+certs/*.key
+
+# Temporary output
+*.tmp
+*.log
+
+# Editor/OS noise
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
