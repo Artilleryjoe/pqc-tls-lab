@@ -1,4 +1,4 @@
-\# Hybrid Post-Quantum TLS Lab
+# Hybrid Post-Quantum TLS Lab
 
 
 
@@ -8,7 +8,7 @@ key establishment with hybrid X25519MLKEM768.
 
 
 
-\## Research Question
+## Research Question
 
 
 
@@ -22,11 +22,11 @@ This lab initially examines:
 
 
 
-\- TLS handshake size
+- TLS handshake size
 
-\- key-share size
+- key-share size
 
-\- connection-establishment throughput
+- connection-establishment throughput
 
 
 
@@ -36,25 +36,25 @@ packet loss, and MTU constraints.
 
 
 
-\## Environment
+## Environment
 
 
 
-\- Windows 11
+- Windows 11
 
-\- OpenSSL 3.5.x
+- OpenSSL 3.5.x
 
-\- Wireshark / tshark 4.6.8
+- Wireshark / tshark 4.6.8
 
-\- TLS 1.3
+- TLS 1.3
 
-\- localhost
+- localhost
 
-\- TCP port 8443
+- TCP port 8443
 
 
 
-\## Protocol Size Results
+## Protocol Size Results
 
 
 
@@ -80,7 +80,7 @@ approximately 658% relative to the X25519 baseline.
 
 
 
-\## Throughput Results
+## Throughput Results
 
 
 
@@ -104,13 +104,13 @@ Observed hybrid throughput delta:
 
 
 
-\- Mean: -8.82%
+- Mean: -8.82%
 
-\- Median: -7.86%
+- Median: -7.86%
 
 
 
-\## Initial Observation
+## Initial Observation
 
 
 
@@ -130,7 +130,7 @@ of evaluating hybrid post-quantum TLS deployment costs.
 
 
 
-\## Limitations
+## Limitations
 
 
 
@@ -144,39 +144,39 @@ Current limitations include:
 
 
 
-\- one host
+- one host
 
-\- one CPU
+- one CPU
 
-\- one OpenSSL implementation
+- one OpenSSL implementation
 
-\- localhost networking
+- localhost networking
 
-\- five trials per configuration
+- five trials per configuration
 
-\- no packet loss
+- no packet loss
 
-\- no WAN latency
+- no WAN latency
 
-\- no constrained MTU
-
-
-
-\## Repository Structure
+- no constrained MTU
 
 
 
-\- `captures/` — packet captures
-
-\- `notes/` — experiment notes
-
-\- `results/` — raw and summarized benchmark data
-
-\- `scripts/` — capture, benchmark, and analysis automation
+## Repository Structure
 
 
 
-\## Next Experiment
+- `captures/` — packet captures
+
+- `notes/` — experiment notes
+
+- `results/` — raw and summarized benchmark data
+
+- `scripts/` — capture, benchmark, and analysis automation
+
+
+
+## Next Experiment
 
 
 
