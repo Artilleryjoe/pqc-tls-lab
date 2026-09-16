@@ -30,21 +30,40 @@ DATASETS = [
         "group": "X25519MLKEM768",
         "file": RESULTS / "wsl-50ms-x25519mlkem768.csv",
     },
+    {
+        "condition": "50ms-1pct",
+        "group": "X25519",
+        "file": RESULTS / "wsl-50ms-1pct-x25519.csv",
+    },
+    {
+        "condition": "50ms-1pct",
+        "group": "X25519MLKEM768",
+        "file": RESULTS / "wsl-50ms-1pct-x25519mlkem768.csv",
+    },
 ]
 
-SUMMARY_FILE = RESULTS / "wsl-handshake-matrix-summary.csv"
+SUMMARY_FILE = (
+    RESULTS / "wsl-handshake-matrix-summary.csv"
+)
 
 
 def percentile(values, p):
+    """
+    Calculate a linear-interpolated percentile.
+    """
+
     values = sorted(values)
 
     if not values:
-        raise ValueError("Empty dataset.")
+        raise ValueError(
+            "Cannot calculate percentile of empty dataset."
+        )
 
     if len(values) == 1:
         return values[0]
 
     index = (len(values) - 1) * (p / 100.0)
+
     lower = math.floor(index)
     upper = math.ceil(index)
 
@@ -55,109 +74,240 @@ def percentile(values, p):
 
     return (
         values[lower]
-        + (values[upper] - values[lower]) * fraction
+        + (
+            values[upper]
+            - values[lower]
+        ) * fraction
     )
 
 
+def pct_delta(new, baseline):
+    """
+    Percentage change from baseline to new.
+    """
+
+    return (
+        (new / baseline) - 1.0
+    ) * 100.0
+
+
 def load_rows(path):
-    with path.open(newline="") as f:
-        return list(csv.DictReader(f))
+    """
+    Load one benchmark CSV.
+    """
+
+    with path.open(
+        newline="",
+        encoding="utf-8"
+    ) as f:
+
+        return list(
+            csv.DictReader(f)
+        )
 
 
 def analyze_dataset(dataset):
-    rows = load_rows(dataset["file"])
+    """
+    Calculate summary statistics for one
+    condition/group combination.
+    """
+
+    rows = load_rows(
+        dataset["file"]
+    )
 
     successful = [
-        row for row in rows
+        row
+        for row in rows
         if row["status"] == "ok"
     ]
 
     failed = [
-        row for row in rows
+        row
+        for row in rows
         if row["status"] != "ok"
     ]
 
-    tls = [
-        float(row["tls_handshake_ms"])
+    if not successful:
+        raise RuntimeError(
+            f"No successful samples in "
+            f"{dataset['file']}"
+        )
+
+    tls_values = [
+        float(
+            row["tls_handshake_ms"]
+        )
         for row in successful
     ]
 
-    tcp = [
-        float(row["tcp_connect_ms"])
+    tcp_values = [
+        float(
+            row["tcp_connect_ms"]
+        )
         for row in successful
     ]
 
-    total = [
-        float(row["total_ms"])
+    total_values = [
+        float(
+            row["total_ms"]
+        )
         for row in successful
     ]
 
-    negotiated = sorted({
+    negotiated_groups = sorted({
         row["negotiated_group"]
         for row in successful
     })
 
-    if not tls:
-        raise RuntimeError(
-            f"No successful samples in {dataset['file']}"
-        )
-
     return {
-        "condition": dataset["condition"],
-        "group": dataset["group"],
-        "samples": len(rows),
-        "successes": len(successful),
-        "failures": len(failed),
-        "negotiated_groups": ",".join(negotiated),
+        "condition":
+            dataset["condition"],
 
-        "tls_mean_ms": statistics.mean(tls),
-        "tls_median_ms": statistics.median(tls),
-        "tls_sd_ms": (
-            statistics.stdev(tls)
-            if len(tls) > 1
-            else 0.0
-        ),
-        "tls_min_ms": min(tls),
-        "tls_max_ms": max(tls),
-        "tls_p95_ms": percentile(tls, 95),
-        "tls_p99_ms": percentile(tls, 99),
+        "group":
+            dataset["group"],
 
-        "tcp_mean_ms": statistics.mean(tcp),
-        "tcp_median_ms": statistics.median(tcp),
+        "samples":
+            len(rows),
 
-        "total_mean_ms": statistics.mean(total),
-        "total_median_ms": statistics.median(total),
-        "total_p95_ms": percentile(total, 95),
+        "successes":
+            len(successful),
+
+        "failures":
+            len(failed),
+
+        "negotiated_groups":
+            ",".join(
+                negotiated_groups
+            ),
+
+        "tls_mean_ms":
+            statistics.mean(
+                tls_values
+            ),
+
+        "tls_median_ms":
+            statistics.median(
+                tls_values
+            ),
+
+        "tls_sd_ms":
+            (
+                statistics.stdev(
+                    tls_values
+                )
+                if len(tls_values) > 1
+                else 0.0
+            ),
+
+        "tls_min_ms":
+            min(
+                tls_values
+            ),
+
+        "tls_max_ms":
+            max(
+                tls_values
+            ),
+
+        "tls_p95_ms":
+            percentile(
+                tls_values,
+                95
+            ),
+
+        "tls_p99_ms":
+            percentile(
+                tls_values,
+                99
+            ),
+
+        "tcp_mean_ms":
+            statistics.mean(
+                tcp_values
+            ),
+
+        "tcp_median_ms":
+            statistics.median(
+                tcp_values
+            ),
+
+        "total_mean_ms":
+            statistics.mean(
+                total_values
+            ),
+
+        "total_median_ms":
+            statistics.median(
+                total_values
+            ),
+
+        "total_p95_ms":
+            percentile(
+                total_values,
+                95
+            ),
+
+        "total_p99_ms":
+            percentile(
+                total_values,
+                99
+            ),
+
+        "total_max_ms":
+            max(
+                total_values
+            ),
     }
 
 
-def pct_delta(new, baseline):
-    return ((new / baseline) - 1.0) * 100.0
+def find_result(
+    results,
+    condition,
+    group
+):
+    """
+    Find one summary result.
+    """
 
-
-def find_result(results, condition, group):
     return next(
-        r for r in results
-        if r["condition"] == condition
-        and r["group"] == group
+        result
+        for result in results
+        if (
+            result["condition"]
+            == condition
+            and
+            result["group"]
+            == group
+        )
     )
 
 
 def print_dataset(result):
+    """
+    Print one dataset summary.
+    """
+
     print(
-        f"{result['condition']:8} "
+        f"{result['condition']:10} "
         f"{result['group']}"
     )
 
     print(
-        f"  samples:        {result['samples']}"
+        f"  samples:        "
+        f"{result['samples']}"
     )
+
     print(
-        f"  successes:      {result['successes']}"
+        f"  successes:      "
+        f"{result['successes']}"
     )
+
     print(
-        f"  failures:       {result['failures']}"
+        f"  failures:       "
+        f"{result['failures']}"
     )
+
     print(
         f"  negotiated:     "
         f"{result['negotiated_groups']}"
@@ -167,34 +317,120 @@ def print_dataset(result):
         f"  TLS mean:       "
         f"{result['tls_mean_ms']:.3f} ms"
     )
+
     print(
         f"  TLS median:     "
         f"{result['tls_median_ms']:.3f} ms"
     )
+
     print(
         f"  TLS SD:         "
         f"{result['tls_sd_ms']:.3f} ms"
     )
+
     print(
         f"  TLS p95:        "
         f"{result['tls_p95_ms']:.3f} ms"
     )
+
     print(
         f"  TLS p99:        "
         f"{result['tls_p99_ms']:.3f} ms"
     )
 
     print(
+        f"  TLS range:      "
+        f"{result['tls_min_ms']:.3f}"
+        f" - "
+        f"{result['tls_max_ms']:.3f} ms"
+    )
+
+    print(
         f"  TCP median:     "
         f"{result['tcp_median_ms']:.3f} ms"
     )
+
     print(
         f"  Total median:   "
         f"{result['total_median_ms']:.3f} ms"
     )
+
     print(
         f"  Total p95:      "
         f"{result['total_p95_ms']:.3f} ms"
+    )
+
+    print(
+        f"  Total p99:      "
+        f"{result['total_p99_ms']:.3f} ms"
+    )
+
+    print(
+        f"  Total max:      "
+        f"{result['total_max_ms']:.3f} ms"
+    )
+
+    print()
+
+
+def print_comparison(
+    label,
+    classical,
+    hybrid
+):
+    """
+    Compare X25519MLKEM768 against X25519
+    for one network condition.
+    """
+
+    tls_median_abs = (
+        hybrid["tls_median_ms"]
+        - classical["tls_median_ms"]
+    )
+
+    tls_median_pct = pct_delta(
+        hybrid["tls_median_ms"],
+        classical["tls_median_ms"],
+    )
+
+    tls_mean_abs = (
+        hybrid["tls_mean_ms"]
+        - classical["tls_mean_ms"]
+    )
+
+    tls_mean_pct = pct_delta(
+        hybrid["tls_mean_ms"],
+        classical["tls_mean_ms"],
+    )
+
+    total_median_abs = (
+        hybrid["total_median_ms"]
+        - classical["total_median_ms"]
+    )
+
+    total_median_pct = pct_delta(
+        hybrid["total_median_ms"],
+        classical["total_median_ms"],
+    )
+
+    print(label)
+
+    print(
+        "  TLS median delta:   "
+        f"{tls_median_pct:+.2f}% "
+        f"({tls_median_abs:+.3f} ms)"
+    )
+
+    print(
+        "  TLS mean delta:     "
+        f"{tls_mean_pct:+.2f}% "
+        f"({tls_mean_abs:+.3f} ms)"
+    )
+
+    print(
+        "  Total median delta: "
+        f"{total_median_pct:+.2f}% "
+        f"({total_median_abs:+.3f} ms)"
     )
 
     print()
@@ -204,21 +440,29 @@ def main():
     results = []
 
     for dataset in DATASETS:
+
         if not dataset["file"].exists():
             raise FileNotFoundError(
-                dataset["file"]
+                f"Missing dataset: "
+                f"{dataset['file']}"
             )
 
         results.append(
-            analyze_dataset(dataset)
+            analyze_dataset(
+                dataset
+            )
         )
 
     print()
-    print("=== TLS Handshake Matrix ===")
+    print(
+        "=== TLS Handshake Matrix ==="
+    )
     print()
 
     for result in results:
-        print_dataset(result)
+        print_dataset(
+            result
+        )
 
     baseline_classical = find_result(
         results,
@@ -244,93 +488,145 @@ def main():
         "X25519MLKEM768",
     )
 
-    baseline_tls_delta = pct_delta(
-        baseline_hybrid["tls_median_ms"],
-        baseline_classical["tls_median_ms"],
+    loss_classical = find_result(
+        results,
+        "50ms-1pct",
+        "X25519",
     )
 
-    latency_tls_delta = pct_delta(
-        latency_hybrid["tls_median_ms"],
-        latency_classical["tls_median_ms"],
+    loss_hybrid = find_result(
+        results,
+        "50ms-1pct",
+        "X25519MLKEM768",
     )
 
-    baseline_total_delta = pct_delta(
-        baseline_hybrid["total_median_ms"],
-        baseline_classical["total_median_ms"],
+    print(
+        "=== Hybrid vs Classical ==="
     )
-
-    latency_total_delta = pct_delta(
-        latency_hybrid["total_median_ms"],
-        latency_classical["total_median_ms"],
-    )
-
-    baseline_abs_tls = (
-        baseline_hybrid["tls_median_ms"]
-        - baseline_classical["tls_median_ms"]
-    )
-
-    latency_abs_tls = (
-        latency_hybrid["tls_median_ms"]
-        - latency_classical["tls_median_ms"]
-    )
-
-    print("=== Hybrid vs Classical ===")
     print()
 
-    print(
-        "Baseline TLS median delta:   "
-        f"{baseline_tls_delta:+.2f}% "
-        f"({baseline_abs_tls:+.3f} ms)"
+    print_comparison(
+        "Baseline",
+        baseline_classical,
+        baseline_hybrid,
+    )
+
+    print_comparison(
+        "~50 ms RTT",
+        latency_classical,
+        latency_hybrid,
+    )
+
+    print_comparison(
+        "~50 ms RTT + 1% loss",
+        loss_classical,
+        loss_hybrid,
     )
 
     print(
-        "50ms TLS median delta:       "
-        f"{latency_tls_delta:+.2f}% "
-        f"({latency_abs_tls:+.3f} ms)"
+        "=== Effect of Network Conditions ==="
     )
-
     print()
 
-    print(
-        "Baseline total median delta: "
-        f"{baseline_total_delta:+.2f}%"
-    )
+    print("X25519")
 
     print(
-        "50ms total median delta:     "
-        f"{latency_total_delta:+.2f}%"
-    )
-
-    print()
-
-    print("=== Effect of Network Delay ===")
-    print()
-
-    print(
-        "X25519 total median:"
-    )
-    print(
-        f"  baseline: "
+        f"  baseline total median: "
         f"{baseline_classical['total_median_ms']:.3f} ms"
     )
+
     print(
-        f"  50ms:     "
+        f"  50ms total median:     "
         f"{latency_classical['total_median_ms']:.3f} ms"
     )
 
+    print(
+        f"  loss total median:     "
+        f"{loss_classical['total_median_ms']:.3f} ms"
+    )
+
     print()
 
+    print("X25519MLKEM768")
+
     print(
-        "X25519MLKEM768 total median:"
-    )
-    print(
-        f"  baseline: "
+        f"  baseline total median: "
         f"{baseline_hybrid['total_median_ms']:.3f} ms"
     )
+
     print(
-        f"  50ms:     "
+        f"  50ms total median:     "
         f"{latency_hybrid['total_median_ms']:.3f} ms"
     )
+
+    print(
+        f"  loss total median:     "
+        f"{loss_hybrid['total_median_ms']:.3f} ms"
+    )
+
+    print()
+    print(
+        "=== Loss-Condition TLS Tails ==="
+    )
+    print()
+
+    print("X25519")
+
+    print(
+        f"  median: "
+        f"{loss_classical['tls_median_ms']:.3f} ms"
+    )
+
+    print(
+        f"  SD:     "
+        f"{loss_classical['tls_sd_ms']:.3f} ms"
+    )
+
+    print(
+        f"  p95:    "
+        f"{loss_classical['tls_p95_ms']:.3f} ms"
+    )
+
+    print(
+        f"  p99:    "
+        f"{loss_classical['tls_p99_ms']:.3f} ms"
+    )
+
+    print(
+        f"  max:    "
+        f"{loss_classical['tls_max_ms']:.3f} ms"
+    )
+
+    print()
+
+    print("X25519MLKEM768")
+
+    print(
+        f"  median: "
+        f"{loss_hybrid['tls_median_ms']:.3f} ms"
+    )
+
+    print(
+        f"  SD:     "
+        f"{loss_hybrid['tls_sd_ms']:.3f} ms"
+    )
+
+    print(
+        f"  p95:    "
+        f"{loss_hybrid['tls_p95_ms']:.3f} ms"
+    )
+
+    print(
+        f"  p99:    "
+        f"{loss_hybrid['tls_p99_ms']:.3f} ms"
+    )
+
+    print(
+        f"  max:    "
+        f"{loss_hybrid['tls_max_ms']:.3f} ms"
+    )
+
+    print()
 
     fields = [
         "condition",
@@ -339,6 +635,7 @@ def main():
         "successes",
         "failures",
         "negotiated_groups",
+
         "tls_mean_ms",
         "tls_median_ms",
         "tls_sd_ms",
@@ -346,16 +643,21 @@ def main():
         "tls_max_ms",
         "tls_p95_ms",
         "tls_p99_ms",
+
         "tcp_mean_ms",
         "tcp_median_ms",
+
         "total_mean_ms",
         "total_median_ms",
         "total_p95_ms",
+        "total_p99_ms",
+        "total_max_ms",
     ]
 
     with SUMMARY_FILE.open(
         "w",
-        newline=""
+        newline="",
+        encoding="utf-8"
     ) as f:
 
         writer = csv.DictWriter(
@@ -366,17 +668,28 @@ def main():
         writer.writeheader()
 
         for result in results:
+
             output = result.copy()
 
             for key, value in output.items():
-                if isinstance(value, float):
-                    output[key] = round(value, 4)
 
-            writer.writerow(output)
+                if isinstance(
+                    value,
+                    float
+                ):
 
-    print()
+                    output[key] = round(
+                        value,
+                        4
+                    )
+
+            writer.writerow(
+                output
+            )
+
     print(
-        f"Saved summary: {SUMMARY_FILE}"
+        f"Saved summary: "
+        f"{SUMMARY_FILE}"
     )
 
 
