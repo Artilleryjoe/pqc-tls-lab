@@ -10,3 +10,11 @@ certs/*.key
 .idea/
 Thumbs.db
 .DS_Store
+
+# Generated test output
+results/*-client.txt
+results/*-client-error.txt
+results/*-server.txt
+results/*-server-error.txt
+results/server-*.txt
+results/request.txt

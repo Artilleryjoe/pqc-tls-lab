@@ -1,2 +1,0 @@
-Using default temp DH parameters
-ACCEPT
